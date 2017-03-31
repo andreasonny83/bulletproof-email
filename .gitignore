@@ -1,4 +1,7 @@
-dist/
-node_modules/
+.DS_Store
+
+node_modules
+/*.log
+
 nodemailer.config.js
-source/.DS_Store
+dist

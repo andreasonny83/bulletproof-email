@@ -1,38 +1,62 @@
 {
-  "name": "bulletproof-email",
-  "version": "1.0.2",
-  "description": "Bulletproof Email",
+  "name": "email-template-generator",
+  "description": "Set of Gulp task for helping developers creating html email templates",
+  "version": "1.0.4",
+  "keywords": [
+    "gulp",
+    "email",
+    "email template",
+    "email template generator",
+    "email generator"
+  ],
   "main": "index.js",
   "scripts": {
-    "postinstall": "cp nodemailer.config.js.example nodemailer.config.js"
+    "postinstall": "gulp postinstall",
+    "serve": "gulp serve -t",
+    "build": "gulp build -t",
+    "build:minify": "gulp build --minify -t",
+    "build:zip": "gulp build --zip -t"
+  },
+  "dependencies": {
+    "gulp": "3.9.1"
+  },
+  "devDependencies": {
+    "browser-sync": "2.18.8",
+    "del": "2.2.2",
+    "fs": "0.0.2",
+    "gulp-autoprefixer": "3.1.1",
+    "gulp-changed": "2.0.0",
+    "gulp-clipboard": "0.1.1",
+    "gulp-file-include": "1.0.0",
+    "gulp-file-insert": "1.0.3",
+    "gulp-htmlmin": "3.0.0",
+    "gulp-if": "2.0.2",
+    "gulp-inject": "4.2.0",
+    "gulp-inline-css": "3.1.0",
+    "gulp-insert": "0.5.0",
+    "gulp-plumber": "1.1.0",
+    "gulp-rename": "1.2.2",
+    "gulp-replace": "0.5.4",
+    "gulp-sass": "3.1.0",
+    "gulp-shell": "0.6.3",
+    "gulp-util": "3.0.8",
+    "gulp-zip": "4.0.0",
+    "nodemailer": "3.1.8",
+    "nodemailer-smtp-transport": "2.7.2",
+    "yargs": "7.0.2"
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:koomai/bulletproof-email.git"
+    "url": "git+https://github.com/andreasonny83/email-template-generator.git"
   },
-  "author": "Sid K",
-  "license": "MIT",
-  "devDependencies": {
-    "browser-sync": "^2.8.2",
-    "del": "~1.2.0",
-    "fs": "0.0.2",
-    "gulp": "^3.8.11",
-    "gulp-changed": "~1.2.1",
-    "gulp-clipboard": "^0.1.1",
-    "gulp-file-include": "~0.9.0",
-    "gulp-if": "~1.2.5",
-    "gulp-imagemin": "~2.2.1",
-    "gulp-inline-css": "~2.0.0",
-    "gulp-minify-html": "~1.0.2",
-    "gulp-plumber": "^1.0.1",
-    "gulp-rename": "^1.2.2",
-    "gulp-replace": "~0.5.3",
-    "gulp-sass": "~1.3.3",
-    "gulp-shell": "~0.4.2",
-    "gulp-util": "^3.0.6",
-    "gulp-zip": "~3.0.2",
-    "nodemailer": "^1.4.0",
-    "nodemailer-smtp-transport": "^1.0.3",
-    "yargs": "^3.21.0"
-  }
+  "bugs": {
+    "web": "https://github.com/andreasonny83/email-template-generator/issues"
+  },
+  "license": {
+    "name": "MIT",
+    "url": "https://github.com/andreasonny83/email-template-generator/blob/master/LICENSE"
+  },
+  "homepage": "https://github.com/andreasonny83/email-template-generator#readme",
+  "author": "andreasonny <andreasonny83@gmail.com>",
+  "private": true
 }

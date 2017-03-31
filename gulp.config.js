@@ -2,34 +2,33 @@
 * All gulpfile configuration options
 */
 
-var nodemailerConfig = require('./nodemailer.config')();
+const nodemailerConfig = require('./nodemailer.config')();
 
-module.exports = function() {
-  var sourceDir = 'source';
-  var localDir = 'dist/local';
-  var productionDir = 'dist/production';
+const sourceDir = 'src';
+const distDir = 'dist';
+const localDir = '/local';
+const productionDir = '/production';
 
-  var config = {
-    localDir: localDir,
-    productionDir: productionDir,
-    sourceDir: sourceDir,
-    localFiles: [
-      localDir + '/css/*.css', 
-      localDir + '/images/**/*', 
-      localDir + '/*.html'
-    ],
-    sourcePath: {
-      sass: sourceDir + '/stylesheets/**/*.scss',
-      html: sourceDir + '/**/*.html',
-      layouts: sourceDir + '/layouts/*.html',
-      images: sourceDir + '/images/**/*'
-    },
-    browsersync: {
-      port: 8080,
-      open: false,
-      notify: true
-    },
-    nodemailer: nodemailerConfig
-  };
-  return config;
+module.exports = {
+  distDir: distDir,
+  localDir: `${distDir}/${localDir}`,
+  productionDir: `${distDir}/${productionDir}`,
+  sourceDir: sourceDir,
+
+  localFiles: [
+    `${distDir}/${localDir}/css/*.css`,
+    `${distDir}/${localDir}/*.html`,
+  ],
+
+  sourcePath: {
+    layouts: `${sourceDir}/layouts`,
+  },
+
+  browsersync: {
+    port: 8080,
+    open: false,
+    notify: true
+  },
+
+  nodemailer: nodemailerConfig
 }

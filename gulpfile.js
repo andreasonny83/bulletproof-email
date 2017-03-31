@@ -1,226 +1,36 @@
 // Gulp packages
-var gulp = require('gulp');
-var sass = require('gulp-sass');
-var fileinclude = require('gulp-file-include');
-var inlineCss = require('gulp-inline-css');
-var minifyHTML = require('gulp-minify-html');
-var imagemin = require('gulp-imagemin');
-var zip = require('gulp-zip');
-var gulpIf = require('gulp-if');
-var changed = require('gulp-changed');
-var replace = require('gulp-replace');
-var gutil = require('gulp-util');
-var plumber = require('gulp-plumber');
-var clipboard = require('gulp-clipboard');
-var rename = require('gulp-rename');
-var argv = require('yargs').argv;
-var del = require('del');
-var browserSync = require('browser-sync').create();
-var nodemailer = require('nodemailer');
-var fs = require('fs');
+const gulp = require('gulp');
+const autoprefixer = require('gulp-autoprefixer');
+const sass = require('gulp-sass');
+const fileinclude = require('gulp-file-include');
+const inlineCss = require('gulp-inline-css');
+const inject = require('gulp-inject');
+const minifyHTML = require('gulp-htmlmin');
+const zip = require('gulp-zip');
+const gulpIf = require('gulp-if');
+const changed = require('gulp-changed');
+const replace = require('gulp-replace');
+const gutil = require('gulp-util');
+const plumber = require('gulp-plumber');
+const clipboard = require('gulp-clipboard');
+const rename = require('gulp-rename');
+const argv = require('yargs').argv;
+const del = require('del');
+const browserSync = require('browser-sync').create();
+const nodemailer = require('nodemailer');
+const fs = require('fs');
+
 // Config files
-var config = require('./gulp.config')();
+let config = {};
 
-// Local web server (Default localhost:8080)
-// Pass argument --port=XXXX to change
-gulp.task('connect', ['html'], function() {
-  browserSync.init({
-          // Serve files from the local directory
-          server: {
-              baseDir: config.localDir,
-              directory: true
-          },
-          port: argv.port ? argv.port : config.browsersync.port,
-          open: config.browsersync.open || (argv.open || (argv.o || false)),
-          notify: config.browsersync.notify
-      });
-
-    gulp.watch([config.sourcePath.sass, config.sourcePath.html], ['html']);
-    gulp.watch(config.sourcePath.images, ['images:local']);
-
-    gulp.watch(config.localFiles)
-      .on('change', browserSync.reload);
-});
-
-// Build CSS files
-gulp.task('sass', function() {
-  log('Compiling SASS to CSS');
-  return gulp.src('source/stylesheets/*.scss')
-    .pipe(plumber({ errorHandler: handleError }))
-    .pipe(sass())
-    .pipe(gulp.dest(config.localDir + '/css'));
-});
-
-// Compile Layouts into HTML files
-gulp.task('html', ['sass'], function() {
-  log('Compiling HTML Templates');
-  return gulp.src(config.sourcePath.layouts)
-      .pipe(fileinclude({
-          prefix: '{{ ',
-          suffix: ' }}',
-          basepath: '@file'
-      }))
-      .pipe(gulp.dest(config.localDir));
-});
-
-// Inline all CSS styles
-// Minify HTML (Optional argument: --minify) 
-gulp.task('inline-css', ['html'], function() {
-  log('Moving CSS inline');
-  return gulp.src(config.localDir + '/*.html')
-    .pipe(inlineCss({
-            applyStyleTags: true,
-            applyLinkTags: true,
-            removeStyleTags: false,
-            removeLinkTags: true
-    }))
-    .pipe(gulpIf(argv.minify, minifyHTML({ conditionals: true, spare: true, quotes: true})))
-    .pipe(gulp.dest(config.productionDir));
-});
-
-// Copy Images folder
-gulp.task('images:local', function () {
-  log('Copying images');
-  gulp.src(config.sourcePath.images)
-    .pipe(gulp.dest(config.localDir + '/images'));
-});
-
-// Copy Images folder and Minify for production
-gulp.task('images:production', function () {
-  log('Minifying and Copying images');
-  return gulp.src(config.sourcePath.images)
-    .pipe(changed(config.productionDir + '/images'))
-    .pipe(imagemin({ progressive: true }))
-    .pipe(gulp.dest(config.productionDir + '/images'));
-});
-
-// Zip all files or images only
-gulp.task('zip', ['images:production'], function () {
-  if (! argv.zip) 
-    return;
-  log('Compressing images into zip file');
-  if(argv.zip == 'all') {
-    return gulp.src(config.productionDir + '/**/**')
-      .pipe(zip('all_files.zip'))
-      .pipe(gulp.dest(config.productionDir));
-  } else {
-    return gulp.src(config.productionDir + '/images/**/*')
-      .pipe(zip('images.zip'))
-      .pipe(gulp.dest(config.productionDir));
-  }
-});
-
-// Empty distribution folders
-gulp.task('clean', function () {
-  log('Cleaning up generated files');
-  del([
-    config.productionDir + '/**/**', 
-    config.localDir + '/**/**'
-  ]);
-});
-
-// Copy a template to the clipboard
-// Pass a template name as an argument --template=NAME or -t NAME
-gulp.task('copy', function() {
-  var template = argv.template ? argv.template : (argv.t ? argv.t : null);
-
-  if (! template) {
-    return log('***ERROR***: Name of template is missing.\n', 'red');
-  }
-  // Copy to Clipboard
-  gulp.src(config.productionDir + '/' + template + '.html')
-    .pipe(clipboard());
-
-  return log('Copied ' + gutil.colors.magenta(template + '.html') + ' to clipboard.\n');
-});
-
-// Clone a Template
-gulp.task('clone', function() {
-
-  if (! argv.from) {
-    return log('***ERROR***: You need to specify a source template.\n', 'red');
-  }
-  if (! argv.to) {
-    return log('***ERROR***: You need to specify a name for the new template.\n', 'red');
-  }
-  // Clone layout
-  gulp.src([config.sourceDir + '/layouts/' + argv.from + '.html'])
-    .pipe(rename(argv.to + '.html'))
-    .pipe(replace(argv.from, argv.to))
-    .pipe(gulp.dest(config.sourceDir + '/layouts/'));
-  // Clone partials
-  gulp.src([config.sourceDir + '/partials/' + argv.from + '/*'])
-    .pipe(gulp.dest(config.sourceDir + '/partials/' + argv.to));
-
-  return gutil.log('Cloned to ' + gutil.colors.magenta(argv.to) + ' successfully.\n');
-});
-
-// Remove a Template
-gulp.task('remove', function() {
-  var template = argv.template ? argv.template : (argv.t ? argv.t : null);
-
-  if (! template) {
-    return log('***ERROR***: Name of template is missing.\n', 'red');
-  }
-  // Delete from source directory and build directories
-  del([
-    config.sourceDir + '/layouts/' + template + '.html', 
-    config.sourceDir + '/partials/' + template,
-    config.productionDir + '/' + template + '.html', 
-    config.localDir + '/' + template + '.html'
-  ]);
-
-  return log('Removed template ' + gutil.colors.magenta(template) + ' successfully.\n');
-});
-
-// Send test emails
-gulp.task('mail', function() {
-  var template = argv.template ? argv.template : (argv.t ? argv.t : null);
-
-  if (! template) {
-    return log('***ERROR***: Name of template is missing\n', 'red');
-  }
-
-  // Nodemailer
-  var transporter = nodemailer.createTransport(config.nodemailer.transportOptions);
-  var mailOptions = config.nodemailer.mailOptions;
-  // Update config values
-  mailOptions.to = argv.to ? argv.to : config.nodemailer.mailOptions.to;
-  mailOptions.subject = argv.subject ? argv.subject : config.nodemailer.mailOptions.subject;
-
-  // get template contents and send email
-  fs.readFile(config.productionDir + '/' + template + '.html', 'utf8', function(err, data) {
-    if(err) {
-      handleError(err);
-    }
-    var regExp = /(\.\.)?\/?images\//g;
-    mailOptions.html = data.replace(regExp, config.nodemailer.imageHost);
-
-    // Send the email
-    transporter.sendMail(mailOptions, function(err, info){
-      if(err) {
-        handleError(err);
-      }
-      log('Test email for template ' + gutil.colors.magenta(template) + ' sent successfully \n');
-    });
-
-  });
-});
-
-/* Tasks */
-// Build for local and start browsersync server
-gulp.task('serve', ['sass', 'html', 'images:local', 'connect']);
-
-// Build for Production
-gulp.task('build', ['sass', 'html', 'inline-css', 'images:production', 'zip']);
-
-// Default
-gulp.task('default', ['serve']);
+let templateName;
+let fileExisits = false;
 
 /* Global functions */
 // Injects custom messages into stream
 function log(msg, color) {
   var msgColor = color ? gutil.colors[color] : gutil.colors.blue;
+
   if (typeof(msg) === 'object') {
     for (var item in msg) {
       if(msg.hasOwnProperty(item)) {
@@ -231,9 +41,260 @@ function log(msg, color) {
     gutil.log(msgColor(msg));
   }
 }
+
 // Handles error without breaking stream
 function handleError(err) {
   gutil.beep();
+
   log(err.toString(), 'red');
+
   this.emit('end');
 }
+
+// Empty distribution folders
+function clean() {
+  log('Cleaning up generated files...', 'magenta');
+
+  return del([
+    config.productionDir + '/**/*',
+    config.localDir + '/**/*'
+  ]);
+}
+
+// Create a nodemailer config file if doesn't exisit already
+gulp.task('postinstall', function() {
+  if (!fs.existsSync('./nodemailer.config.js')) {
+    return gulp
+      .src('./nodemailer.config.js.example')
+      .pipe(rename('nodemailer.config.js'))
+      .pipe(gulp.dest('./'));
+  }
+});
+
+gulp.task('init', ['postinstall'], function() {
+  config = require('./gulp.config');
+  templateName = argv.template ? argv.template : (argv.t ? argv.t : null);
+
+  clean();
+
+  if (!templateName || !fs.existsSync(`${config.sourcePath.layouts}/${templateName}`)) {
+    gutil.beep();
+    log(`
+      ***ERROR***: Template name is missing.
+      You must specify a template name while running this task.
+      Try adding a -t templatename
+      Please read the documentation at https://github.com/andreasonny83/email-template-generator/#readme if you're not sure what this means.
+    `, 'red');
+
+    return process.exit();
+  }
+
+  return log(`Using template: "${templateName}"`, 'green');
+});
+
+// Local web server (Default localhost:8080)
+// Pass argument --port=XXXX to change
+gulp.task('connect', ['html'], function() {
+  browserSync.init({
+    // Serve files from the local directory
+    server: {
+      baseDir: config.localDir,
+    },
+    port: argv.port ? argv.port : config.browsersync.port,
+    open: config.browsersync.open || (argv.open || (argv.o || false)),
+    notify: config.browsersync.notify
+  });
+
+  gulp.watch(`${config.sourcePath.layouts}/${templateName}/**/*`, ['clean', 'html']);
+
+  gulp
+    .watch(config.localFiles)
+    .on('change', browserSync.reload);
+});
+
+// Build CSS files
+gulp.task('sass', ['init'], function(cb) {
+  log('Compiling SASS to CSS');
+
+  gulp
+    .src(`${config.sourcePath.layouts}/${templateName}/styles/*.scss`)
+    .pipe(plumber({ errorHandler: handleError }))
+    .pipe(sass())
+    .pipe(autoprefixer({
+      browsers: ['> 0%'],
+    }))
+    .pipe(rename('main.css'))
+    .pipe(gulp.dest(config.localDir + '/'));
+
+  cb();
+});
+
+// Compile Layouts into HTML files
+gulp.task('html', ['sass'], function(cb) {
+  log('Compiling HTML Templates');
+
+  gulp
+    .src(`${config.sourcePath.layouts}/${templateName}/*.html`)
+    .pipe(rename('index.html'))
+    .pipe(inject(gulp.src(config.localDir + '/main.css', {read: false}), {
+      transform: function () {
+        return '<link rel="stylesheet" href="main.css">';
+      },
+      removeTags: true
+    }))
+    .pipe(gulp.dest(config.localDir));
+
+  cb();
+});
+
+// Inline all CSS styles
+// Minify HTML (Optional argument: --minify)
+gulp.task('inline-css', ['html'], function(cb) {
+  log('Moving CSS inline');
+
+  gulp
+    .src(`${config.localDir}/index.html`)
+    .pipe(inlineCss({
+      applyStyleTags: true,
+      applyLinkTags: true,
+      removeStyleTags: true,
+      removeLinkTags: true
+    }))
+    .pipe(gulpIf(argv.minify, minifyHTML({
+      collapseWhitespace: true,
+      removeComments: true,
+      //  minifyCSS: true, // this convert #ffffff to #fff which is probably not what we don't want
+      quoteCharacter: '"'
+    })))
+    .pipe(gulp.dest(config.productionDir));
+
+  cb();
+});
+
+// Zip all files
+gulp.task('zip', function (cb) {
+  if (! argv.zip) {
+    return;
+  }
+
+  log('Compressing into zip file');
+
+  gulp
+    .src(config.productionDir + '/**/**')
+    .pipe(zip('all_files.zip'))
+    .pipe(gulp.dest(config.productionDir));
+
+  cb();
+});
+
+// Copy a template to the clipboard
+// Pass a template name as an argument --template=NAME or -t NAME
+gulp.task('copy', function() {
+  templateName = argv.template ? argv.template : (argv.t ? argv.t : null);
+
+  if (! templateName) {
+    return log('***ERROR***: Name of template is missing.\n', 'red');
+  }
+
+  // Copy to Clipboard
+  gulp.src(`${config.productionDir}/${templateName}.html`)
+    .pipe(clipboard());
+
+  return log('Copied ' + gutil.colors.magenta(templateName + '.html') + ' to clipboard.\n');
+});
+
+// Clone a Template
+gulp.task('clone', function() {
+
+  if (! argv.from) {
+    return log('***ERROR***: You need to specify a source template.\n', 'red');
+  }
+
+  if (! argv.to) {
+    return log('***ERROR***: You need to specify a name for the new template.\n', 'red');
+  }
+
+  // Clone layout
+  gulp
+    .src([config.sourceDir + '/layouts/' + argv.from + '.html'])
+    .pipe(rename(argv.to + '.html'))
+    .pipe(replace(argv.from, argv.to))
+    .pipe(gulp.dest(config.sourceDir + '/layouts/'));
+
+  // Clone partials
+  gulp
+    .src([config.sourceDir + '/partials/' + argv.from + '/*'])
+    .pipe(gulp.dest(config.sourceDir + '/partials/' + argv.to));
+
+  return gutil.log('Cloned to ' + gutil.colors.magenta(argv.to) + ' successfully.\n');
+});
+
+// Remove a Template
+gulp.task('remove', function() {
+  templateName = argv.template ? argv.template : (argv.t ? argv.t : null);
+
+  if (!templateName) {
+    return log('***ERROR***: Name of template is missing.\n', 'red');
+  }
+
+  // Delete from source directory and build directories
+  del([
+    config.sourceDir + '/layouts/' + templateName + '.html',
+    config.sourceDir + '/partials/' + templateName,
+    config.productionDir + '/' + templateName + '.html',
+    config.localDir + '/' + templateName + '.html'
+  ]);
+
+  return log('Removed template ' + gutil.colors.magenta(templateName) + ' successfully.\n');
+});
+
+// Send test emails
+gulp.task('mail', function() {
+  templateName = argv.template ? argv.template : (argv.t ? argv.t : null);
+
+  if (!templateName) {
+    return log('***ERROR***: Name of template is missing\n', 'red');
+  }
+
+  // Nodemailer
+  var transporter = nodemailer.createTransport(config.nodemailer.transportOptions);
+  var mailOptions = config.nodemailer.mailOptions;
+
+  // Update config values
+  mailOptions.to = argv.to ? argv.to : config.nodemailer.mailOptions.to;
+  mailOptions.subject = argv.subject ? argv.subject : config.nodemailer.mailOptions.subject;
+
+  // get template contents and send email
+  fs.readFile(config.productionDir + '/' + templateName + '.html', 'utf8', function(err, data) {
+    if (err) {
+      handleError(err);
+    }
+
+    var regExp = /(\.\.)?\/?images\//g;
+    mailOptions.html = data.replace(regExp, config.nodemailer.imageHost);
+
+    // Send the email
+    transporter.sendMail(mailOptions, function(err, info){
+      if (err) {
+        handleError(err);
+      }
+
+      log('Test email for template ' + gutil.colors.magenta(templateName) + ' sent successfully \n');
+    });
+
+  });
+});
+
+gulp.task('clean', function() {
+  return clean();
+});
+
+/* Tasks */
+// Build for local and start browsersync server
+gulp.task('serve', ['sass', 'html', 'connect']);
+
+// Build for Production
+gulp.task('build', ['sass', 'html', 'inline-css', 'zip']);
+
+// Default
+gulp.task('default', ['serve']);
