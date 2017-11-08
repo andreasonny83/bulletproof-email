@@ -28,12 +28,6 @@ The main features are:
 
 You can download NodeJS from [nodejs.org](https://nodejs.org/)
 
-### Ensure you have the latest version of the npm package manager
-
-```sh
-$ npm install -g npm
-```
-
 ## Getting started
 
 ### Install all the project's dependencies
@@ -47,15 +41,21 @@ $ yarn install
 ## Usage
 
 `npm run serve layoutName` - starts a local webserver on **http://localhost:8080**
+
 `npm run serve layoutName -- --port=8888` - starts a local webserver on **http://localhost:8888**
+
 `npm run serve layoutName -- --open` - opens the URL on your default browser automatically.
 
 `npm run build layoutName` - builds production ready files in *dist/production* folder.
+
 `npm run build:minify layoutName` - minifies your HTML files
+
 `npm run build:zip layoutName` - builds files + creates a zip file of your images directory (for Campaign Monitor)
 
-`npm run mail layoutName` - send a test email using your default configuration in `nodemailer.config.js`
-`npm run mail layoutName -- --to=email@example.com --subject='Lorem Ipsum'` - send a test email with overrides
+`npm run mail` - fires a test email using your default configuration in `nodemailer.config.js` (Please, refer to the [Test Emails](#test-emails) section
+for more information)
+
+`npm run mail -- --to=email@example.com --subject='Lorem Ipsum'` - send a test email with overrides
 
 Continue reading below for more details
 
@@ -68,21 +68,36 @@ the `example` folder provided with this repository.
 *   **layouts** - layout templates
 *   **layouts/styles** - it's important that all the styles for the templates sit under a styles folder inside your template.
 
-Also, in your template html file, the reference to the styles will always be `<!-- inject:css --><!-- endinject -->`
+Also, in your template html file, the reference to the styles will always be
+
+```html
+<!-- inject:css --><!-- endinject -->
+```
+
 like in the example provided.
 
 ## Local server
 
-Run `npm run serve layoutName` where `layoutName` is the name of the folder you want to serve
+```sh
+$ npm run serve layoutName
+````
+
+where `layoutName` is the name of the folder you want to serve
 (eg. `npm run serve example`) to start a local webserver.
 Visit **http://localhost:8080** on your browser to test your templates.
 
-You can run `npm run serve example -- --open` to open the URL automatically on your default browser.
+You can also run:
+
+```sh
+$ npm run serve example -- --open
+```
+
+to open the URL automatically on your default browser.
 
 This also instantiates a watcher that:
 
-* watches for changes in the source folder
-* compiles SASS to CSS
+* watches for file-changes in the source folder
+* compiles SASS to CSS on-the-fly
 * builds the HTML files from the templates
 * outputs latest files to *dist/local* folder
 * uses Browsersync to reload the browser
@@ -91,9 +106,13 @@ You can also choose a different port by passing the `--port` argument, e.g. `gul
 
 ## Production files
 
-Run `npm run build layoutName` to generate production-ready files.
+```sh
+$ npm run build layoutName
+```
 
-This compiles production-ready HTML to the *dist/production* folder. It does the following:
+This will compile a production-ready HTML to the *dist/production* folder.
+It does the following operations:
+
 * compiles SASS to CSS
 * builds the HTML files from the templates
 * brings the CSS inline into the HTML and removes the CSS files (except `media-queries.css`)
@@ -101,17 +120,29 @@ This compiles production-ready HTML to the *dist/production* folder. It does the
 
 ## Minify
 
-If your newsletters are very long, you should minify the HTML so that Gmail doesn't [clip them](https://www.campaignmonitor.com/forums/topic/8088/what-rule-does-gmail-use-to-decide-when-to-clip-a-message/).
+```sh
+$ npm run build:minify layoutName
+```
 
-Run `npm run build:minify layoutName` to minify your HTML files.
+If your newsletters are very long, you should minify the HTML so that Gmail doesn't [clip them](https://www.campaignmonitor.com/forums/topic/8088/what-rule-does-gmail-use-to-decide-when-to-clip-a-message/).
 
 ## Zip files
 
+```sh
+$ npm run build:zip layoutName
+```
+
 Some email tools require zip files to upload new templates.
 
-Run `npm run build:zip layoutName` to compress the generated distribution version.
-
 ## Test Emails
+
+```sh
+$ npm run mail
+```
+
+This task will send a test email using Nodemailer.
+To know how to configure this project to use your Nodemailer configutration,
+please continue reading the following sections.
 
 All configuration options are in the `gulp.config.js` file.
 To send emails using Nodemailer, update `nodemailer.config.js` with your email credentials and other mail options.
@@ -205,9 +236,7 @@ Finally, update `imageHost` with the full Url of the directory where your images
 The mail task replaces the relative paths with this Url.
 
 ```sh
-$ gulp mail --template=NAME
-$ gulp mail -t NAME
-$ gulp mail --template=NAME --to=email@example.com --subject='Lorem Ipsum'
+$ npm run mail -- --to=email@example.com --subject='Lorem Ipsum'
 ```
 
 ## Contributing

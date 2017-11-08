@@ -6,8 +6,8 @@ const nodemailerConfig = require('./nodemailer.config')();
 
 const sourceDir = 'src';
 const distDir = 'dist';
-const localDir = '/local';
-const productionDir = '/production';
+const localDir = 'local';
+const productionDir = 'production';
 
 module.exports = {
   distDir: distDir,

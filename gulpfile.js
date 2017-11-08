@@ -1,6 +1,7 @@
 // Gulp packages
 const gulp = require('gulp');
 const autoprefixer = require('gulp-autoprefixer');
+const gulpSequence = require('gulp-sequence');
 const sass = require('gulp-sass');
 const fileinclude = require('gulp-file-include');
 const inlineCss = require('gulp-inline-css');
@@ -73,9 +74,10 @@ gulp.task('postinstall', function() {
 
 gulp.task('init', ['postinstall'], function() {
   config = require('./gulp.config');
-  templateName = argv.template ? argv.template : (argv.t ? argv.t : null);
+});
 
-  clean();
+gulp.task('init:template', function() {
+  templateName = argv.template ? argv.template : (argv.t ? argv.t : null);
 
   if (!templateName || !fs.existsSync(`${config.sourcePath.layouts}/${templateName}`)) {
     gutil.beep();
@@ -113,10 +115,10 @@ gulp.task('connect', ['html'], function() {
 });
 
 // Build CSS files
-gulp.task('sass', ['init'], function(cb) {
+gulp.task('sass', function() {
   log('Compiling SASS to CSS');
 
-  gulp
+  return gulp
     .src(`${config.sourcePath.layouts}/${templateName}/styles/*.scss`)
     .pipe(plumber({ errorHandler: handleError }))
     .pipe(sass())
@@ -125,15 +127,13 @@ gulp.task('sass', ['init'], function(cb) {
     }))
     .pipe(rename('main.css'))
     .pipe(gulp.dest(config.localDir + '/'));
-
-  cb();
 });
 
 // Compile Layouts into HTML files
-gulp.task('html', ['sass'], function(cb) {
+gulp.task('html', function() {
   log('Compiling HTML Templates');
 
-  gulp
+  return gulp
     .src(`${config.sourcePath.layouts}/${templateName}/*.html`)
     .pipe(rename('index.html'))
     .pipe(inject(gulp.src(config.localDir + '/main.css', {read: false}), {
@@ -143,16 +143,14 @@ gulp.task('html', ['sass'], function(cb) {
       removeTags: true
     }))
     .pipe(gulp.dest(config.localDir));
-
-  cb();
 });
 
 // Inline all CSS styles
 // Minify HTML (Optional argument: --minify)
-gulp.task('inline-css', ['html'], function(cb) {
+gulp.task('inline-css', function() {
   log('Moving CSS inline');
 
-  gulp
+  return gulp
     .src(`${config.localDir}/index.html`)
     .pipe(inlineCss({
       applyStyleTags: true,
@@ -167,24 +165,20 @@ gulp.task('inline-css', ['html'], function(cb) {
       quoteCharacter: '"'
     })))
     .pipe(gulp.dest(config.productionDir));
-
-  cb();
 });
 
 // Zip all files
-gulp.task('zip', function (cb) {
+gulp.task('zip', function () {
   if (! argv.zip) {
     return;
   }
 
   log('Compressing into zip file');
 
-  gulp
+  return gulp
     .src(config.productionDir + '/**/**')
     .pipe(zip('all_files.zip'))
     .pipe(gulp.dest(config.productionDir));
-
-  cb();
 });
 
 // Copy a template to the clipboard
@@ -197,15 +191,15 @@ gulp.task('copy', function() {
   }
 
   // Copy to Clipboard
-  gulp.src(`${config.productionDir}/${templateName}.html`)
+  return gulp
+    .src(`${config.productionDir}/${templateName}.html`)
     .pipe(clipboard());
 
   return log('Copied ' + gutil.colors.magenta(templateName + '.html') + ' to clipboard.\n');
 });
 
 // Clone a Template
-gulp.task('clone', function() {
-
+gulp.task('clone', function(cb) {
   if (! argv.from) {
     return log('***ERROR***: You need to specify a source template.\n', 'red');
   }
@@ -226,7 +220,8 @@ gulp.task('clone', function() {
     .src([config.sourceDir + '/partials/' + argv.from + '/*'])
     .pipe(gulp.dest(config.sourceDir + '/partials/' + argv.to));
 
-  return gutil.log('Cloned to ' + gutil.colors.magenta(argv.to) + ' successfully.\n');
+  gutil.log('Cloned to ' + gutil.colors.magenta(argv.to) + ' successfully.\n');
+  cb();
 });
 
 // Remove a Template
@@ -237,25 +232,19 @@ gulp.task('remove', function() {
     return log('***ERROR***: Name of template is missing.\n', 'red');
   }
 
+  log('Removed template ' + gutil.colors.magenta(templateName) + ' successfully.\n');
+
   // Delete from source directory and build directories
-  del([
+  return del([
     config.sourceDir + '/layouts/' + templateName + '.html',
     config.sourceDir + '/partials/' + templateName,
     config.productionDir + '/' + templateName + '.html',
     config.localDir + '/' + templateName + '.html'
   ]);
-
-  return log('Removed template ' + gutil.colors.magenta(templateName) + ' successfully.\n');
 });
 
 // Send test emails
-gulp.task('mail', function() {
-  templateName = argv.template ? argv.template : (argv.t ? argv.t : null);
-
-  if (!templateName) {
-    return log('***ERROR***: Name of template is missing\n', 'red');
-  }
-
+gulp.task('sendmail', function(cb) {
   // Nodemailer
   var transporter = nodemailer.createTransport(config.nodemailer.transportOptions);
   var mailOptions = config.nodemailer.mailOptions;
@@ -265,7 +254,7 @@ gulp.task('mail', function() {
   mailOptions.subject = argv.subject ? argv.subject : config.nodemailer.mailOptions.subject;
 
   // get template contents and send email
-  fs.readFile(config.productionDir + '/' + templateName + '.html', 'utf8', function(err, data) {
+  fs.readFile(config.productionDir + '/index.html', 'utf8', function(err, data) {
     if (err) {
       handleError(err);
     }
@@ -274,15 +263,16 @@ gulp.task('mail', function() {
     mailOptions.html = data.replace(regExp, config.nodemailer.imageHost);
 
     // Send the email
-    transporter.sendMail(mailOptions, function(err, info){
+    transporter.sendMail(mailOptions, function(err, info) {
       if (err) {
         handleError(err);
       }
 
       log('Test email for template ' + gutil.colors.magenta(templateName) + ' sent successfully \n');
     });
-
   });
+
+  cb();
 });
 
 gulp.task('clean', function() {
@@ -291,10 +281,13 @@ gulp.task('clean', function() {
 
 /* Tasks */
 // Build for local and start browsersync server
-gulp.task('serve', ['sass', 'html', 'connect']);
+gulp.task('serve', gulpSequence('clean', 'init', 'init:template', 'sass', 'html', 'connect'));
 
 // Build for Production
-gulp.task('build', ['sass', 'html', 'inline-css', 'zip']);
+gulp.task('build', gulpSequence('clean', 'init', 'init:template', 'sass', 'html', 'inline-css', 'zip'));
 
 // Default
 gulp.task('default', ['serve']);
+
+// Send test email using nodemailer
+gulp.task('mail', ['init', 'sendmail']);
